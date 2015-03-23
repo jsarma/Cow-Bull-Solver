@@ -1,17 +1,23 @@
 
 
 class CowBull
+
+	def debug(msg)
+		#puts msg
+	end 
+
 	def run
-		@num_digits = 2
+		@num_digits = 3
 
 		@n = (10 ** @num_digits) #max possible guess. min is always 0
-		puts "N: #{@n}"
+		debug "N: #{@n}"
 		@matrix = init_matrix
 		print_matrix
 
 		while true do
 			#get guess with best score
 			guess = compute_guess
+			debug 'Failed to solve' if guess == -1
 
 			#make guess and get response from input
 			puts 'Guess:', stringify_index(guess)
@@ -47,12 +53,12 @@ class CowBull
 	end
 
 	def print_matrix #debug
-		# puts @matrix.inspect
+		# debug @matrix.inspect
 		@matrix.each_with_index do |row, row_index|
 			next if (row==-1)
 			row.each_with_index do |col, col_index|
 				next if (col==-1)
-				puts "(#{row_index}, #{col_index}): #{col}"
+				debug "(#{stringify_index(row_index)}, #{stringify_index(col_index)}): #{col}"
 			end
 		end
 
@@ -60,15 +66,15 @@ class CowBull
 
 
 	def update_matrix(guess, response)
-		puts "UPDATE_MATRIX: #{guess}, #{response}"
+		debug "UPDATE_MATRIX: #{guess}, #{response}"
 		#eliminate all answers that this response renders invalid
 		@matrix[guess].each_with_index do |col, col_index|
 			next if (col == -1)
-			puts "#{col_index}: #{col}"
+			debug "#{col_index}: #{col}"
 			if (response != col)
 				#skip this answer in the future (yes, col_index becomes row index)
 				@matrix[col_index] = -1
-				puts "MARKING #{col_index}"
+				debug "MARKING #{col_index}"
 			end
 			# #remove this answer from all future guess calculations
 			# matrix.each_with_index do |row, row_index|
@@ -95,7 +101,8 @@ class CowBull
 				x[row_index] += col
 				score += 1
 			end
-			score -= x.max_by{|k,v| v}.first() #heuristic: remove the answers associated with the most likely response from count
+			debug "SCORES: #{x}"
+			score -= x.max_by{|k,v| v}.first() if (x.size>1) #heuristic: remove the answers associated with the most likely response from count
 			if (score > best_guess_score)
 				best_guess_score = score
 				best_guess_index = row_index
@@ -112,10 +119,11 @@ class CowBull
 	def respond(guess, answer)
 		response = 0
 		str_guess = stringify_index(guess)
+		str_answer = stringify_index(answer)
 		str_guess.split('').each_with_index do |char, char_index|
-			if (str_guess[char_index] == answer[char_index])
+			if (str_guess[char_index] == str_answer[char_index])
 				response += 10
-			elsif (answer.match(str_guess[char_index]))
+			elsif (str_answer.match(str_guess[char_index]))
 				response += 1
 			end
 		end
@@ -124,13 +132,13 @@ class CowBull
 
 	def is_legal_answer(x) #answer is not legal if there's a repeated digit
 		h = {}
-		# puts "LEGAL? #{x}"
+		# debug "LEGAL? #{x}"
 		stringify_index(x).split('').each do |char|
 			# print "#{char} "
 			return false if (h[char]) #found repeat!
 			h[char] = true
 		end
-		# puts "LEGAL!"
+		# debug "LEGAL!"
 		return true
 	end
 
@@ -141,5 +149,5 @@ class CowBull
 end
 
 
-# cow_bull = CowBull.new
-# cow_bull.run
+cow_bull = CowBull.new
+cow_bull.run
