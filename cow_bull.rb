@@ -1,9 +1,10 @@
 
 
 class CowBull
+	@@level = 1
 
-	def debug(msg)
-		#puts msg
+	def debug(msg, level=1)
+		puts msg if (level <= @@level)
 	end 
 
 	def run
@@ -14,13 +15,18 @@ class CowBull
 		@matrix = init_matrix
 		print_matrix
 
+		guess_count = 1
+
 		while true do
 			#get guess with best score
 			guess = compute_guess
-			debug 'Failed to solve' if guess == -1
+			if guess == -1
+				puts 'Failed to solve... You must be a cheater.'
+				return
+			end
 
 			#make guess and get response from input
-			puts 'Guess:', stringify_index(guess)
+			puts "Guess ##{guess_count}:", stringify_index(guess)
 			puts 'Response?'
 			response = readline.chomp.to_i
 
@@ -31,12 +37,15 @@ class CowBull
 			#update matrix
 			update_matrix(guess, response)
 			print_matrix
+			guess_count += 1
 		end
 	end
 
 	def init_matrix
+		stime = Time.now
+		debug 'init matrix', 0
 		#initialize with responses
-		return Array.new(@n) do |row_index| #guesses
+		retval = Array.new(@n) do |row_index| #guesses
 			if (!is_legal_answer(row_index))
 				-1
 			else
@@ -49,7 +58,9 @@ class CowBull
 					end
 				end
 			end
-		end		
+		end
+		debug "init matrix done #{Time.now - stime}", 0
+		return retval
 	end
 
 	def print_matrix #debug
@@ -58,7 +69,7 @@ class CowBull
 			next if (row==-1)
 			row.each_with_index do |col, col_index|
 				next if (col==-1)
-				debug "(#{stringify_index(row_index)}, #{stringify_index(col_index)}): #{col}"
+				debug "(#{stringify_index(row_index)}, #{stringify_index(col_index)}): #{col}", 2
 			end
 		end
 
@@ -101,7 +112,7 @@ class CowBull
 				x[row_index] += col
 				score += 1
 			end
-			debug "SCORES: #{x}"
+			debug "SCORES: #{x}", 2
 			score -= x.max_by{|k,v| v}.first() if (x.size>1) #heuristic: remove the answers associated with the most likely response from count
 			if (score > best_guess_score)
 				best_guess_score = score
@@ -118,8 +129,8 @@ class CowBull
 	# This function more or less defines the rules of the game
 	def respond(guess, answer)
 		response = 0
-		str_guess = stringify_index(guess)
-		str_answer = stringify_index(answer)
+		str_guess = stringify_index guess
+		str_answer = stringify_index answer
 		str_guess.split('').each_with_index do |char, char_index|
 			if (str_guess[char_index] == str_answer[char_index])
 				response += 10
