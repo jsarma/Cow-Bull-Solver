@@ -8,11 +8,19 @@ class CowBull
 	end 
 
 	def setup
-		@num_digits = 2
+		@num_digits = 4
 		@done_state = @num_digits * 10;
-		@n = (10 ** @num_digits) #max possible guess. min is always 0
+		@n = (10 ** @num_digits) #max possible guess. min is always 0		
 		debug "N: #{@n}"
-		@src_matrix = init_matrix
+		filename = "cow_bull_#{@num_digits}.matrix";
+		if (File.exists?(filename))
+			puts "matrix"
+			@src_matrix = Marshal.load(File.binread(filename))
+		else
+			puts "not matrix"
+			@src_matrix = init_matrix
+			File.open(filename, 'wb') {|f| f.write(Marshal.dump(@src_matrix))}
+		end
 	end
 
 	def play_with_myself
@@ -34,14 +42,14 @@ class CowBull
 					return
 				end
 				#make guess and get response from input
-				puts "Guess ##{guess_count}: #{stringify_index(guess)}"
+				#puts "Guess ##{guess_count}: #{stringify_index(guess)}"
 				response = respond(guess, secret)				
-				puts "Response? #{response}"
+				#puts "Response? #{response}"
 				game_score_sequences[secret] ||= []
 				game_score_sequences[secret].push(guess)
 
 				if (response == @done_state)
-					puts "Solved #{secret} with guess count: #{guess_count}"
+					puts "Solved #{secret} with guess count: #{guess_count} Sequence: #{game_score_sequences[secret]}"
 					game_scores.push([secret, guess_count])					
 					break
 				end
