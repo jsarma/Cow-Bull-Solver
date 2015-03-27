@@ -14,25 +14,25 @@ class CowBull
 		debug "N: #{@n}"
 		filename = "cow_bull_#{@num_digits}.matrix";
 		if (File.exists?(filename))
-			puts "matrix"
+			puts "Cached response matrix exists"
 			@src_matrix = Marshal.load(File.binread(filename))
 		else
-			puts "not matrix"
+			puts "Not cached response matrix. Must generation. Long time..."
 			@src_matrix = init_matrix
 			File.open(filename, 'wb') {|f| f.write(Marshal.dump(@src_matrix))}
 		end
 	end
 
+	#Play our algorithm for every possible answer.
 	def play_with_myself
 		game_scores = []
 		game_score_sequences = {}
 		setup
 		ser_matrix = Marshal.dump(@src_matrix)
 		#play once for each possible correct answer
-		(0..@n).each do |secret|
+		@n.step(0, -1) do |secret| #go in reverse because higher numbers are harder and we want bad results quick
 			next if (!is_legal_answer(secret))
 			@matrix = Marshal.load(ser_matrix)
-			puts "SECRET: #{secret}"
 			guess_count = 1
 			while true do
 				#get guess with best score
@@ -46,7 +46,7 @@ class CowBull
 				response = respond(guess, secret)				
 				#puts "Response? #{response}"
 				game_score_sequences[secret] ||= []
-				game_score_sequences[secret].push(guess)
+				game_score_sequences[secret].push(stringify_index(guess))
 
 				if (response == @done_state)
 					puts "Solved #{secret} with guess count: #{guess_count} Sequence: #{game_score_sequences[secret]}"
@@ -63,6 +63,7 @@ class CowBull
 		score_algorithm(game_scores, game_score_sequences)
 	end
 
+	#Output stats at the end.
 	def score_algorithm(game_scores, game_score_sequences)
 		puts "Guess Sequences: #{game_score_sequences}"
 		puts "Scores: #{game_scores}"
@@ -70,6 +71,7 @@ class CowBull
 		puts "Avg Guesses: #{game_scores.inject(0.0) { |sum, el| sum + el[1] } / game_scores.size }"
 	end	
 
+	#play our algorithm for a specific answer, interactively with user.
 	def play
 		setup
 		#print_matrix
@@ -99,6 +101,9 @@ class CowBull
 		end
 	end
 
+	#populate the initial game matrix:
+	#(Guess, Possible Correct Answer) = response(guess, possible correct answer)
+	#eg: "if I guess, 1234, and the correct answer is 3456, we set the value at (1234,3456) = 02, for 2 cows"
 	def init_matrix
 		stime = Time.now
 		debug 'init matrix', 0
@@ -133,18 +138,14 @@ class CowBull
 
 	end
 
-
+	#Every iteration, we update the matrix by removing answers that are no longer possible
 	def update_matrix(guess, response)
-		debug "UPDATE_MATRIX: #{guess}, #{response}"
+		debug "UPDATE_MATRIX: #{guess}, #{response}", 2
 		#eliminate all answers that this response renders invalid
 		@matrix[guess].each_with_index do |col, col_index|
 			next if (col == -1)
-			#debug "#{col_index}: #{col}"
 			if (response != col)
-				# #skip this answer in the future (yes, col_index becomes row index)
-				# @matrix[col_index] = -1
 				debug "MARKING (#{guess}, #{col_index})", 2
-
 				#remove this answer from all future guess calculations
 				@matrix.each_with_index do |row, row_index|
 					next if (@matrix[row_index] == -1)
@@ -157,9 +158,20 @@ class CowBull
 		@matrix[guess.to_i] = -1
 	end
 
-	#use the existing matrix to calculate and return the guess that will eliminate the most possible answers
+	#Use the existing matrix to calculate and return the guess that will eliminate the most possible answers
 	#The heuristic we use is to count the total number of possible answers the most likely response would eliminate
 	#This requires us figure out the most likely response and remove it from the count.
+	#Example: If a certain guess could generate 40 responses depending on remaining possible correct answers: 
+	#  12: 2 bulls
+	#  10: 1 cow 1 bull
+	#   8: 1 cow
+	#   5: 2 cows
+	#   5: none
+	#We would add these up (40), then subtract off the most common one (12), giving us 28 as the score of this guess.
+	#When we get the response, we can eliminate any answer that does not match. So if they respond 2 bulls,
+	#we know we can eliminate 28 possibilities. And any other response would eliminate at least 28 possibilities,
+	#because every other set is smaller than 12.
+	#So by maximizing this score, we are maximizing the worst case number of possibilities we will eliminate.
 	def compute_guess
 		best_guess_score = 0
 		best_guess_index = -1
@@ -193,7 +205,7 @@ class CowBull
 		return best_guess_index
 	end
 
-	# given a guess and an answer, calculate the correct game response.
+	# Given a guess and an answer, calculate the correct game response.
 	# For each digit placed correctly, assign 10 points.
 	# For each digit in the number, but not placed correctly, assign 1 point.
 	# The correct answer returns 40.
@@ -212,7 +224,7 @@ class CowBull
 		return response
 	end
 
-	@@is_legal_answer = {}
+	@@is_legal_answer = {} #cache so it's quicker!
 	def is_legal_answer(x) #answer is not legal if there's a repeated digit
 		return @@is_legal_answer[x] if @@is_legal_answer[x]
 		h = {}
@@ -228,13 +240,13 @@ class CowBull
 		return true
 	end
 
-	@@stringify_index = {}
+	@@stringify_index = {} #cache so it's quicker!
 	def stringify_index(x)
 		@@stringify_index[x] ||= x.to_s.rjust(@num_digits,'0')
 	end
 
 end
 
-
+#we need some command line option parsing don't we!
 cow_bull = CowBull.new
-cow_bull.play_with_myself
+cow_bull.play_with_myself  #or just .play if you want to play interactively
