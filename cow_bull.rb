@@ -1,4 +1,43 @@
 
+require 'optparse'
+require 'ruby-prof'
+
+def main
+	options = {
+		digits: 3,
+		mode: 'play'
+	}
+	OptionParser.new do |opts|
+	  opts.banner = "Usage: cow_bull.rb [options]"
+
+	  opts.on("-D", "--debug", "Run In Debug Mode") do |arg|
+	    options[:debug] = arg
+	  end
+
+	  opts.on("-mMODE", "--mode=MODE", "Executation mode: (play, solve, load") do |arg|
+	    options[:mode] = arg
+	  end
+
+	  opts.on("-dDIGIT", "--digits=DIGIT", "Number of digits") do |arg|
+	    options[:digits] = arg.to_i
+	  end
+
+	end.parse!
+
+	puts options
+
+	#we need some command line option parsing don't we!
+	case options[:mode]
+	when 'play'
+		cow_bull = CowBull.new
+		cow_bull.play(options)
+	when 'solve'
+		cow_bull = CowBull.new
+		cow_bull.play_with_myself(options)
+	when 'load' #TODO: just load the code to call functions from outside
+	end
+end
+
 
 class CowBull
 	@@level = 0
@@ -7,10 +46,11 @@ class CowBull
 		puts msg if (level <= @@level)
 	end 
 
-	def setup
-		@num_digits = 4
+	def setup(options)
+		@num_digits = options[:digits] || 3
 		@done_state = @num_digits * 10;
-		@n = (10 ** @num_digits) #max possible guess. min is always 0		
+		@n = (10 ** @num_digits) #max possible guess. min is always 0
+		@n = 25		
 		debug "N: #{@n}"
 		filename = "cow_bull_#{@num_digits}.matrix";
 		if (File.exists?(filename))
@@ -24,15 +64,18 @@ class CowBull
 	end
 
 	#Play our algorithm for every possible answer.
-	def play_with_myself
+	def play_with_myself(options)
 		game_scores = []
 		game_score_sequences = {}
-		setup
-		ser_matrix = Marshal.dump(@src_matrix)
+		setup(options)
+		@matrix = @src_matrix
+		#ser_matrix = Marshal.dump(@src_matrix)
 		#play once for each possible correct answer
 		@n.step(0, -1) do |secret| #go in reverse because higher numbers are harder and we want bad results quick
 			next if (!is_legal_answer(secret))
-			@matrix = Marshal.load(ser_matrix)
+			#@matrix = Marshal.load(ser_matrix)
+			@eliminated = {}
+			@guessed = {}
 			guess_count = 1
 			while true do
 				#get guess with best score
@@ -63,20 +106,13 @@ class CowBull
 		score_algorithm(game_scores, game_score_sequences)
 	end
 
-	#Output stats at the end.
-	def score_algorithm(game_scores, game_score_sequences)
-		puts "Guess Sequences: #{game_score_sequences}"
-		puts "Scores: #{game_scores}"
-		puts "Max Guesses: #{game_scores.max_by {|k,v| v} }"
-		puts "Avg Guesses: #{game_scores.inject(0.0) { |sum, el| sum + el[1] } / game_scores.size }"
-	end	
-
 	#play our algorithm for a specific answer, interactively with user.
-	def play
-		setup
+	def play(options)
+		setup(options)
 		#print_matrix
 		@matrix = @src_matrix
-
+		@eliminated = {}
+		@guessed = {}
 		guess_count = 1
 		while true do
 			#get guess with best score
@@ -131,7 +167,7 @@ class CowBull
 		@matrix.each_with_index do |row, row_index|
 			next if (row==-1)
 			row.each_with_index do |col, col_index|
-				#next if (col==-1)
+				next if (col==-1 || @eliminated[col_index])
 				debug "(#{stringify_index(row_index)}, #{stringify_index(col_index)}): #{col}", 1
 			end
 		end
@@ -143,19 +179,21 @@ class CowBull
 		debug "UPDATE_MATRIX: #{guess}, #{response}", 2
 		#eliminate all answers that this response renders invalid
 		@matrix[guess].each_with_index do |col, col_index|
-			next if (col == -1)
+			next if (col == -1 || @eliminated[col_index])
 			if (response != col)
 				debug "MARKING (#{guess}, #{col_index})", 2
+				@eliminated[col_index] = true
 				#remove this answer from all future guess calculations
-				@matrix.each_with_index do |row, row_index|
-					next if (@matrix[row_index] == -1)
-					@matrix[row_index][col_index] = -1
-				end
-
+				# @matrix.each_with_index do |row, row_index|
+				# 	next if (@matrix[row_index] == -1)
+				# 	@matrix[row_index][col_index] = -1
+				# end
 			end
 		end
 		#don't try the same guess twice
-		@matrix[guess.to_i] = -1
+		#@matrix[guess.to_i] = -1
+		@eliminated[guess] = true
+		@guessed[guess] = true
 	end
 
 	#Use the existing matrix to calculate and return the guess that will eliminate the most possible answers
@@ -176,17 +214,19 @@ class CowBull
 		best_guess_score = 0
 		best_guess_index = -1
 		@matrix.each_with_index do |row, row_index|
-			next if (row == -1)  #skip possibilities we've already eliminated
+			next if (row == -1 || @guessed[row_index])  #skip illegal and already guessed answers
 			x = {}
 			score = 0
 			row.each_with_index do |col, col_index|
-				next if (col == -1) #skip possibilities we've already eliminated
+				next if (col == -1 || @eliminated[col_index]) #skip illegal and eliminated possibilities
 				x[col] ||= 0
 				x[col] += 1
 				score += 1
 			end
 			prescore = score
-			if (x.size==1)
+			if (x.size==0) #no solution
+				return -1
+			elsif (x.size==1)
 				if (x[@done_state])
 					debug "by Jove I think you've got it"
 					return row_index
@@ -245,8 +285,38 @@ class CowBull
 		@@stringify_index[x] ||= x.to_s.rjust(@num_digits,'0')
 	end
 
+
+	#Output stats at the end.
+	def score_algorithm(game_scores, game_score_sequences)
+		#puts "Guess Sequences: #{game_score_sequences}"
+		#puts "Scores: #{game_scores}"
+		puts "Max Guesses: #{game_scores.max_by {|k,v| v} }"
+		puts "Avg Guesses: #{game_scores.inject(0.0) { |sum, el| sum + el[1] } / game_scores.size }"
+	end
+
+	#WIP - Figure out a clean way to turn game_score_sequences into a decision tree
+	#5312      [1234, {3: [5678, ]
+	#[guess, {response => [guess]}]
+	# def construct_decision_tree(game_score_sequences)
+	# 	tree = []
+	# 	node = tree
+	# 	game_score_sequences.each do |secret, sequence|
+	# 		sequence.each do |guess|
+	# 			if (node.size==0)
+	# 				node.push(guess)
+	# 				response = respond(guess, secret)
+	# 				node.push({response => []})
+	# 			end
+	# 			node = node[1][response]
+	# 		end
+	# 	end
+	# 	tree.inspect
+	# end
 end
 
-#we need some command line option parsing don't we!
-cow_bull = CowBull.new
-cow_bull.play_with_myself  #or just .play if you want to play interactively
+#RubyProf.start
+main
+#result = RubyProf.stop
+#printer = RubyProf::FlatPrinter.new(result)
+#printer.print(STDOUT)
+
