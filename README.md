@@ -23,7 +23,7 @@ Solves the "cow bull" number guessing game
 * The decision tree this algorithm generates solves every possible answer in an average of 5.78 guesses. The guesses have the following guess counts:
 1. 1
 2. 2
-3.21
+3. 21
 4. 174
 5. 1309
 6. 2885
