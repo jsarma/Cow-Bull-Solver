@@ -21,6 +21,7 @@ Solves the "cow bull" number guessing game
 #This program's performance
 * There are 5040 possible games. 
 * The decision tree this algorithm generates solves every possible answer in an average of 5.78 guesses. The guesses have the following guess counts:
+
 1. 1
 2. 2
 3. 21
@@ -28,6 +29,7 @@ Solves the "cow bull" number guessing game
 5. 1309
 6. 2885
 7. 648
+
 * For reference, the best known solution solves in an average of 5.2131 turns with no more than 50 7-try games.
 * So the good news is we've kept the total number of guesses in every game at 7 or less, which makes this solution more or less optimal.
 * The bad news, is we're still half a turn a way from the optimal average guess count, and we have 600 more 7 try games then necessary.
