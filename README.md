@@ -1,7 +1,7 @@
 # Cow-Bull-Solver
 Solves the "cow bull" number guessing game
 
-##Rules of game
+## Rules of game
 1. I think of a number
 2. You guess a number consisting of N unique digits (usually 4).
 3. I tell respond "c cows, b bulls" where c is the number of occurences of one of your numbers in my number in the incorrect place and b is the number of occurrences of one of your numbers in the correct position.
@@ -9,7 +9,7 @@ Solves the "cow bull" number guessing game
 
 * See here: http://en.wikipedia.org/wiki/Bulls_and_cows
 
-#Example
+## Example
 1. I secretly choose the number 7321
 2. You guess 1234
 3. I respond 3 cows, 0 bulls.
@@ -18,17 +18,16 @@ Solves the "cow bull" number guessing game
 6. You guess 7321, I respond 4 bulls.
 7. You've won in 6 tries.
  
-#This program's performance
+## This program's performance
 * There are 5040 possible games. 
 * The decision tree this algorithm generates solves every possible answer in an average of 5.78 guesses. The guesses have the following guess counts:
-
-1. 1
-2. 2
-3. 21
-4. 174
-5. 1309
-6. 2885
-7. 648
+  1. 1
+  2. 2
+  3. 21
+  4. 174
+  5. 1309
+  6. 2885
+  7. 648
 
 * For reference, the best known solution solves in an average of 5.2131 turns with no more than 50 7-try games.
 * So the good news is we've kept the total number of guesses in every game at 7 or less, which makes this solution more or less optimal.
